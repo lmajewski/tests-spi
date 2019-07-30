@@ -8,12 +8,12 @@
 #
 #set -x
 
-SPI_FSL_QUADSPI_MOD="fsl_quadspi"
+SPI_FSL_QUADSPI_MOD="spi-fsl-qspi.ko"
 
 lsmod | grep -q ${SPI_FSL_QUADSPI_MOD}
-[ $? -ne 0 ] && insmod ./fsl-quadspi.ko
+[ $? -ne 0 ] && insmod ./spi-fsl-qspi.ko
 
-command -v flash_erase || { echo "./spidev_test not accessibe !"; exit 0; }
+command -v flash_erase || { echo "mtd-tools not installed !"; exit 0; }
 
 count=1
 
@@ -42,39 +42,39 @@ vybryd_test_qspi_write() {
 	sizeB=${2}
 	blockSize=${3:-1}
 
-        tf1=$(mktemp)                                     
-        tf1o=$(mktemp)                                    
-	fld="0"        
+	tf1=$(mktemp)
+	tf1o=$(mktemp)
+	fld="0"
 
-                       
-        echo "#########################################"                                                    
-        echo "# E/W/R: Bytes: ${sizeB} to SPI-NOR BS: ${blockSize}"
-        echo "# Dev: /dev/mtd${dev}"
-	vybryd_test_qspi_erase ${dev} ${sizeB}        
-                                                                                     
-        head -c ${sizeB} /dev/urandom > ${tf1}                                                                           
-        tf1_sum=$(md5sum ${tf1} | cut -f1 -d ' ')                                                                      
 
-        # Introduce errors if needed                                                                                   
-        # hexdump ${tf1}                                                                                               
-        # echo -ne \\xDD | dd conv=notrunc bs=1 count=1 of=${tf1}                                                      
-        # hexdump ${tf1}                                                                                               
-        
+	echo "#########################################"
+	echo "# E/W/R: Bytes: ${sizeB} to SPI-NOR BS: ${blockSize}"
+	echo "# Dev: /dev/mtd${dev}"
+	vybryd_test_qspi_erase ${dev} ${sizeB}
+
+	head -c ${sizeB} /dev/urandom > ${tf1}
+	tf1_sum=$(md5sum ${tf1} | cut -f1 -d ' ')
+
+	# Introduce errors if needed
+	# hexdump ${tf1}
+	# echo -ne \\xDD | dd conv=notrunc bs=1 count=1 of=${tf1}
+	# hexdump ${tf1}
+
 	dd if=${tf1} of=/dev/mtd${dev} oflag=sync > /dev/null 2>&1
 	sync
-	sleep 0.5 
+	sleep 0.5
 	dd if=/dev/mtd${dev} of=${tf1o} bs=${blockSize} count=$((${sizeB}/${blockSize})) oflag=sync > /dev/null 2>&1
-	sync                 
-                                                                                  
-        echo "${tf1_sum} ${tf1o}" | md5sum -c --quiet -                     
-        ret=$?                                                              
+	sync
+
+	echo "${tf1_sum} ${tf1o}" | md5sum -c --quiet -
+	ret=$?
 	# hexdump ${tf1o}
-        echo -n "SPI WRITE: " 
-        [ ${ret} -eq 0 ] && { echo "  OK"; } || { echo "  FAILED"; fld="1";}
-                                                                           
-        rm ${tf1} ${tf1o}
-                                        
-        [ ${fld} -eq 1 ] && exit 0
+	echo -n "SPI WRITE: "
+	[ ${ret} -eq 0 ] && { echo "  OK"; } || { echo "  FAILED"; fld="1";}
+
+	rm ${tf1} ${tf1o}
+
+	[ ${fld} -eq 1 ] && exit 0
 }
 
 vybryd_test_qspi_erase() {
@@ -91,10 +91,10 @@ vybryd_test_qspi_erase() {
 [ -c "/dev/mtd${device}" ] || { echo "Device /dev/mtd${device} not found!"; exit 0;}
 
 for i in $(seq 1 ${count} );
-do	
+do
 	echo "******************************************"
 	echo "* count: ${i}/${count}"
-	vybryd_test_qspi_write ${device} 1 
+	vybryd_test_qspi_write ${device} 1
 	vybryd_test_qspi_write ${device} 64
 	vybryd_test_qspi_write ${device} 256
 	vybryd_test_qspi_write ${device} 1024 64
@@ -110,4 +110,3 @@ do
 done
 
 exit 0
-
